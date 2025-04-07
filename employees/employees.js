@@ -11,56 +11,85 @@ async function populateEmployees(){
     const insightsPanel = document.getElementById("insights-panel");
     const chartContainer = document.getElementById("chart-container");
     const incomeContainer = document.getElementById("income-container");
-    const employeesData = await getEmployeesData();
-    insightsPanel.innerText = employeesData.data.insight;
-    var incomeNotes = "";
-    employeesData.data.income_notes.forEach(note => {
-        incomeNotes += `
-        <div class="income-panel">
-            <span>
-                ${note}
-            </span>
-        </div>`
-    });
-    incomeContainer.innerHTML = incomeNotes;
 
-    var chart = new Image();
-    chart.setAttribute('src', `data:image/jpg;base64,${employeesData.data.chart}`)
-    chart.width = 1000;
-    chart.height = 325;
-    chartContainer.appendChild(chart);
+    try {
+    const employeesData = await getEmployeesData();
+    if (!employeesData || !employeesData.data) {
+      insightsPanel.textContent = "Unable to load insights.";
+      return;
+    }
+    if (insightsPanel) {
+      insightsPanel.innerText = employeesData.data.insight;
+    }
+
+    if (incomeContainer) {
+      let incomeNotes = "";
+      employeesData.data.income_notes.forEach(note => {
+        incomeNotes += `
+          <div class="income-panel">
+            <span>${note}</span>
+          </div>`;
+      });
+      incomeContainer.innerHTML = incomeNotes;
+    }
+
+    if (chartContainer) {
+      const ctx = chartContainer.getContext("2d");
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          datasets: [{
+            label: "Revenue ($)",
+            data: employeesData.data.revenue || [500, 700, 400, 900, 800, 600, 750],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+  } catch (err) {
+    console.error("Failed to populate employee data:", err);
+  }
 }
 
 async function getEmployeesData() {
-    /*
-    Retrieves the employees data and redirects unauthorized users.
-    */
+  try {
+    const response = await fetch("http://localhost:8000/employees", {
+      credentials: 'include'
+    });
 
-    try {
-        const response = await fetch("http://localhost:8000/employees", {
-            credentials: 'include'
-        });
-        if (!response.ok) {
-            alert("Failed to retrieve employees data");
-            return;
-        }
-        const json = await response.json();
-        if (json.status_code === 401){
-            window.location.href = "../login/index.html"; // Redirect to login page if they don't have access to view the employees. 
-            return;
-        } 
-        return json;
-
-    } catch (error) {
-        console.error(error);
+    if (!response.ok) {
+      alert("Failed to retrieve employees data");
+      return null;
     }
+
+    const json = await response.json();
+
+    if (json.status_code === 401) {
+      window.location.href = "../login/index.html";
+      return null;
+    }
+
+    return json;
+
+  } catch (error) {
+    console.error("Error fetching employee data:", error);
+    return null;
+  }
 }
 
-function showLeftPanel(){
-    var leftPanel = document.getElementById("left-panel");
+function showLeftPanel() {
+  const leftPanel = document.getElementById("left-panel");
+  if (leftPanel) {
     leftPanel.classList.toggle("open");
+  }
 }
-
 // Function to handle logout
 function logout() {
     // Send GET request to the /logout endpoint
@@ -101,8 +130,11 @@ const employees = [
     const emp = employees[index];
 
     // Hide placeholder message, show details
-    document.getElementById("placeholder-message").style.display = "none";
-    document.getElementById("employee-details").style.display = "flex";
+    const placeholder = document.getElementById("placeholder-message");
+    const details = document.getElementById("employee-details");
+
+    if (placeholder) placeholder.style.display = "none";
+    if (details) details.style.display = "flex";
 
     document.getElementById("employee-name").textContent = emp.name;
     document.getElementById("pay").textContent = emp.pay;
