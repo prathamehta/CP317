@@ -61,6 +61,10 @@ function showLeftPanel(){
     leftPanel.classList.toggle("open");
 }
 
+function goHome() {
+  window.location.href = "./index.html"; // or wherever your dashboard lives
+}
+
 // Function to handle logout
 function logout() {
     // Send GET request to the /logout endpoint
